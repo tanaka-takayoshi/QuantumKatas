@@ -47,7 +47,7 @@ namespace Quantum.Kata.BasicGates {
             // The Pauli X gate will change the |0⟩ state to the |1⟩ state and vice versa.
             // Type X(q);
             // Then rebuild the project and rerun the tests - T11_StateFlip_Test should now pass!
-            
+            X(q);
             // ...
         }
         
