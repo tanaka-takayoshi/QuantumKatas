@@ -35,8 +35,7 @@ namespace Quantum.Kata.Measurements {
     // Output: true if qubit was in |1⟩ state, or false if it was in |0⟩ state.
     // The state of the qubit at the end of the operation does not matter.
     operation IsQubitOne (q : Qubit) : Bool {
-        // ...
-        return false;
+        return M(q) == One;
     }
     
     
@@ -44,7 +43,10 @@ namespace Quantum.Kata.Measurements {
     // Input: a qubit in an arbitrary state.
     // Goal:  change the state of the qubit to |0⟩.
     operation InitializeQubit (q : Qubit) : Unit {
-        // ...
+        if (M(q) == One)
+        {
+            X(q);
+        }
     }
     
     
@@ -54,8 +56,8 @@ namespace Quantum.Kata.Measurements {
     // Output: true if qubit was in |+⟩ state, or false if it was in |-⟩ state.
     // The state of the qubit at the end of the operation does not matter.
     operation IsQubitPlus (q : Qubit) : Bool {
-        // ...
-        return false;
+        H(q);
+        return M(q) == Zero;
     }
     
     
@@ -68,8 +70,8 @@ namespace Quantum.Kata.Measurements {
     // Output: true if qubit was in |A⟩ state, or false if it was in |B⟩ state.
     // The state of the qubit at the end of the operation does not matter.
     operation IsQubitA (alpha : Double, q : Qubit) : Bool {
-        // ...
-        return false;
+        Ry(-2.0 * alpha, q);
+        return M(q) == Zero;
     }
     
     
@@ -79,8 +81,8 @@ namespace Quantum.Kata.Measurements {
     //         1 if they were in |11⟩ state.
     // The state of the qubits at the end of the operation does not matter.
     operation ZeroZeroOrOneOne (qs : Qubit[]) : Int {
-        // ...
-        return -1;
+        
+        return M(qs[0]) == Zero ? 0 | 1;
     }
     
     
@@ -96,8 +98,17 @@ namespace Quantum.Kata.Measurements {
     // (i.e., |10⟩ state corresponds to qs[0] in state |1⟩ and qs[1] in state |0⟩).
     // The state of the qubits at the end of the operation does not matter.
     operation BasisStateMeasurement (qs : Qubit[]) : Int {
-        // ...
-        return -1;
+        mutable m1 = 0;
+        if (M(qs[0]) == One) {
+            set m1 = 1;
+        }
+        
+        mutable m2 = 0;
+        if (M(qs[1]) == One) {
+            set m2 = 1;
+        }
+        
+        return m1 * 2 + m2;
     }
     
     
@@ -115,9 +126,24 @@ namespace Quantum.Kata.Measurements {
     // You can use exactly one measurement.
     // Example: for bit strings [false, true, false] and [false, false, true]
     //          return 0 corresponds to state |010⟩, and return 1 corresponds to state |001⟩.
+
+    function FindFirstDiff (bits1 : Bool[], bits2 : Bool[]) : Int {
+        
+        mutable firstDiff = -1;
+        for (i in 0 .. Length(bits1) - 1) {
+            if (bits1[i] != bits2[i] && firstDiff == -1) {
+                set firstDiff = i;
+            }
+        }
+        
+        return firstDiff;
+    }
+
     operation TwoBitstringsMeasurement (qs : Qubit[], bits1 : Bool[], bits2 : Bool[]) : Int {
-        // ...
-        return -1;
+        let firstDiff = FindFirstDiff(bits1, bits2);
+        let res = M(qs[firstDiff]) == One;
+        
+        return res == bits1[firstDiff] ? 0 | 1;
     }
     
     
@@ -129,8 +155,14 @@ namespace Quantum.Kata.Measurements {
     //         1 if they were in W state.
     // The state of the qubits at the end of the operation does not matter.
     operation AllZerosOrWState (qs : Qubit[]) : Int {
-        // ...
-        return -1;
+        for(i in 0..Length(qs)-1) 
+        {
+            if(M(qs[i]) == One) 
+            {
+                return 1;
+            }
+        }
+        return 0;
     }
     
     
@@ -142,8 +174,19 @@ namespace Quantum.Kata.Measurements {
     //         1 if they were in W state.
     // The state of the qubits at the end of the operation does not matter.
     operation GHZOrWState (qs : Qubit[]) : Int {
-        // ...
-        return -1;
+        let N = Length(qs);
+        mutable countOnes = 0;
+        
+        for (i in 0 .. N - 1) {
+            if (M(qs[i]) == One) {
+                set countOnes = countOnes + 1;
+            }
+        }
+        
+        if (countOnes == 1) {
+            return 1;
+        }
+        return 0;
     }
     
     
@@ -159,10 +202,22 @@ namespace Quantum.Kata.Measurements {
     //         3 if they were in |Ψ⁻⟩ state.
     // The state of the qubits at the end of the operation does not matter.
     operation BellState (qs : Qubit[]) : Int {
-        // Hint: you need to use 2-qubit gates to solve this task
+        H(qs[0]);
+        H(qs[1]);
+        CNOT(qs[1], qs[0]);
+        H(qs[1]);
+
+        mutable m1 = 0;
+        if (M(qs[0]) == One) {
+            set m1 = 1;
+        }
         
-        // ...
-        return -1;
+        mutable m2 = 0;
+        if (M(qs[1]) == One) {
+            set m2 = 1;
+        }
+        
+        return m2 * 2 + m1;
     }
     
     
@@ -178,8 +233,9 @@ namespace Quantum.Kata.Measurements {
     //         3 if they were in |S3⟩ state.
     // The state of the qubits at the end of the operation does not matter.
     operation TwoQubitState (qs : Qubit[]) : Int {
-        // ...
-        return -1;
+        H(qs[0]);
+        H(qs[1]);
+        return BasisStateMeasurement(qs);
     }
     
     
@@ -194,9 +250,32 @@ namespace Quantum.Kata.Measurements {
     //         2 if they were in |S2⟩ state,
     //         3 if they were in |S3⟩ state.
     // The state of the qubits at the end of the operation does not matter.
+
+    // Helper function to implement diag(-1, 1, 1, 1)
+    operation ApplyDiag2 (qs : Qubit[]) : Unit {
+        
+        body (...) {
+            ApplyToEach(X, qs);
+            Controlled Z([qs[0]], qs[1]);
+            ApplyToEach(X, qs);
+        }
+        
+        adjoint self;
+    }
+
     operation TwoQubitStatePartTwo (qs : Qubit[]) : Int {
-        // ...
-        return -1;
+        // Observe that the unitary matrix A formed by the columns |S0⟩, ..., |S3⟩
+        // is up to permutations matrices and diagonal +1/-1 matrices equal to the
+        // tensor product H ⊗ H when multiplied from the left and the right.
+        // Specifically, A = diag(-1, 1, 1, 1) (H ⊗ H) diag(-1, 1, 1, 1) pi,
+        // where pi is the permutation (1,2) corresponding to a swap of 2 qubits.
+
+        // Apply permutation pi
+        SWAP(qs[0], qs[1]);
+        
+        // Apply diag(..) (H ⊗ H) diag(..)
+        With(ApplyDiag2, ApplyToEach(H, _), qs);
+        return BasisStateMeasurement(qs);
     }
     
     
@@ -217,8 +296,8 @@ namespace Quantum.Kata.Measurements {
     // The state of the qubit at the end of the operation does not matter.
     // Note: in this task you have to get accuracy of at least 80%.
     operation IsQubitPlusOrZero (q : Qubit) : Bool {
-        // ...
-        return true;
+        Ry(0.25 * PI(), q);
+        return M(q) == Zero;
     }
     
     
@@ -237,8 +316,22 @@ namespace Quantum.Kata.Measurements {
     // The state of the qubit at the end of the operation does not matter.
     // You are allowed to use ancilla qubit(s).
     operation IsQubitPlusZeroOrInconclusiveSimpleUSD (q : Qubit) : Int {
-        // ...
-        return -2;
+        mutable output = 0;
+        let basis = RandomInt(2);
+        
+        // randomize over std and had
+        if (basis == 0) 
+        {            
+            set output = M(q) == One ? 1 | -1;
+        }
+        else 
+        {
+            // use Hadamard basis
+            H(q);
+            set output = M(q) == One ? 0 | -1;
+        }
+        
+        return output;
     }
     
 }
