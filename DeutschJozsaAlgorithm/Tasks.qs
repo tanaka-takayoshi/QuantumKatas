@@ -57,7 +57,11 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // Since f(x) = 1 for all values of x, |y ⊕ f(x)⟩ = |y ⊕ 1⟩ = |NOT y⟩.
         // This means that the operation needs to flip qubit y (i.e. transform |0⟩ to |1⟩ and vice versa).
 
-        // ...
+        body (...) {
+            X(y);
+        }
+        
+        adjoint invert;
     }
     
     
@@ -72,7 +76,7 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // You don't need to modify it. Feel free to remove it, this won't cause your code to fail.
         AssertBoolEqual(0 <= k && k < Length(x), true, "k should be between 0 and N-1, inclusive");
 
-        // ...
+        CNOT(x[k], y);
     }
     
     
@@ -84,7 +88,7 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
     operation Oracle_OddNumberOfOnes (x : Qubit[], y : Qubit) : Unit {
         // Hint: f(x) can be represented as x_0 ⊕ x_1 ⊕ ... ⊕ x_(N-1)
 
-        // ...
+        ApplyToEachA(CNOT(_, y), x);
     }
     
     
@@ -102,7 +106,13 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // You don't need to modify it. Feel free to remove it, this won't cause your code to fail.
         AssertIntEqual(Length(x), Length(r), "Arrays should have the same length");
 
-        // ...
+        for (i in 0 .. Length(x) - 1) 
+        {
+            if (r[i] == 1)
+            {
+                CNOT(x[i], y);
+            }
+        }
     }
     
     
@@ -118,7 +128,18 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // You don't need to modify it. Feel free to remove it, this won't cause your code to fail.
         AssertIntEqual(Length(x), Length(r), "Arrays should have the same length");
 
-        // ...
+        for (i in 0 .. Length(x) - 1) 
+        {
+            if (r[i] == 1) 
+            {
+                CNOT(x[i], y);
+            } else 
+            {
+                X(x[i]);
+                CNOT(x[i], y);
+                X(x[i]);
+            }
+        }
     }
     
     
@@ -139,12 +160,31 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
 
         // Hint: the first part of the function is the same as in task 1.4
 
-        // ...
+        ApplyToEachA(CNOT(_, y), x);
 
         // Hint: you can use Controlled functor to perform multicontrolled gates
         // (gates with multiple control qubits).
 
-        // ...
+        for (i in 0 .. P - 1) 
+        {
+                
+            if (prefix[i] == 0) 
+            {
+                X(x[i]);
+            }
+        }
+        
+        Controlled X(x[0 .. P - 1], y);
+        
+        // uncompute changes done to input register
+        for (i in 0 .. P - 1) 
+        {
+            
+            if (prefix[i] == 0) 
+            {
+                X(x[i]);
+            }
+        }
     }
     
     
@@ -160,7 +200,9 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
 
         // Hint: represent f(x) in terms of AND and ⊕ operations
 
-        // ...
+        CCNOT(x[0], x[1], y);
+        CCNOT(x[0], x[2], y);
+        CCNOT(x[1], x[2], y);
     }
     
     
@@ -179,7 +221,9 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
     operation BV_StatePrep (query : Qubit[], answer : Qubit) : Unit {
         
         body (...) {
-            // ...
+            ApplyToEachA(H, query);
+            X(answer);
+            H(answer);
         }
         
         adjoint invert;
@@ -206,7 +250,29 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // the array has to be mutable to allow updating its elements.
         mutable r = new Int[N];
         
-        // ...
+        using ((x, y) = (Qubit[N], Qubit())) 
+        {
+            BV_StatePrep(x, y);
+            
+            // apply oracle
+            Uf(x, y);
+            
+            // apply Hadamard to each qubit of the input register
+            ApplyToEach(H, x);
+            
+            // measure all qubits of the input register;
+            // the result of each measurement is converted to an Int
+            for (i in 0 .. N - 1) 
+            {
+                if (M(x[i]) != Zero) 
+                {
+                    set r[i] = 1;
+                }
+            }
+            
+            ResetAll(x);
+            Reset(y);
+        }
 
         return r;
     }
@@ -230,8 +296,9 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // matches the expected value (i.e. the bit vector passed to Oracle_ProductFunction).
 
         // BV_Test appears in the list of unit tests for the solution; run it to verify your code.
-
-        // ...
+        mutable r = [1,0,1];
+        let oracle = Oracle_ProductFunction(_, _, r);
+        AssertIntArrayEqual(BV_Algorithm(Length(r), oracle), r, "Bernstein-Vazirani algorithm failed");
     }
     
     
@@ -265,8 +332,13 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // it can be expressed as running Bernstein-Vazirani algorithm
         // and then post-processing the return value classically
         
-        // ...
-
+        let r = BV_Algorithm(N, Uf);
+        
+        for (i in 0 .. N - 1) 
+        {
+            set isConstantFunction = isConstantFunction && r[i] == 0;
+        }
+        
         return isConstantFunction;
     }
     
@@ -281,8 +353,10 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // Hint: use AssertBoolEqual function to assert that the return value of DJ_Algorithm operation matches the expected value
 
         // DJ_Test appears in the list of unit tests for the solution; run it to verify your code.
-
-        // ...
+        mutable r = [1, 0, 1, 1];
+        let oracle = Oracle_ProductFunction(_, _, r);
+        AssertBoolEqual(DJ_Algorithm(4, oracle), false, "f(x) = sum of r_i x_i not identified as balanced");
+        
     }
     
     
@@ -309,7 +383,33 @@ namespace Quantum.Kata.DeutschJozsaAlgorithm {
         // the array has to be mutable to allow updating its elements.
         mutable r = new Int[N];
         
-        // ...
+        using ((x, y) = (Qubit[N], Qubit())) 
+        {
+            // apply oracle to qubits in all 0 state
+            Uf(x, y);
+            
+            // f(x) = Σᵢ (𝑟ᵢ 𝑥ᵢ + (1 - 𝑟ᵢ)(1 - 𝑥ᵢ)) = 2 Σᵢ 𝑟ᵢ 𝑥ᵢ + Σᵢ 𝑟ᵢ + Σᵢ 𝑥ᵢ + N = Σᵢ 𝑟ᵢ + N
+            // remove the N from the expression
+            if (N % 2 == 1) 
+            {
+                X(y);
+            }
+            
+            // now y = Σᵢ 𝑟ᵢ
+            
+            // measure the output register
+            let m = M(y);
+            if (m == One) 
+            {
+                // adjust parity of bit vector r
+                set r[0] = 1;
+            }
+            
+            // before releasing the qubits make sure they are all in |0⟩ state
+            ResetAll(x);
+            Reset(y);
+        }
+
         return r;
     }
     
