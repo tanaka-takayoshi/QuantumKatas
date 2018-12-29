@@ -32,7 +32,7 @@ namespace Quantum.Kata.SimonsAlgorithm {
     operation Oracle_CountBits (x : Qubit[], y : Qubit) : Unit {
         
         body (...) {
-            // ...
+            ApplyToEachCA(CNOT(_, y), x);
         }
         
         adjoint invert;
@@ -48,7 +48,10 @@ namespace Quantum.Kata.SimonsAlgorithm {
     operation Oracle_BitwiseRightShift (x : Qubit[], y : Qubit[]) : Unit {
         
         body (...) {
-            // ...
+            for(i in 0..Length(x)-2) 
+            {
+                CNOT(x[i], y[i+1]);
+            }
         }
         
         adjoint invert;
@@ -69,7 +72,13 @@ namespace Quantum.Kata.SimonsAlgorithm {
             // You don't need to modify it. Feel free to remove it, this won't cause your code to fail.
             AssertIntEqual(Length(x), Length(A), "Arrays x and A should have the same length");
             
-            // ...
+            for(i in 0..Length(x)-1) 
+            {
+                if(A[i] == 1) 
+                {
+                    CNOT(x[i], y);
+                }
+            }
         }
         
         adjoint invert;
@@ -94,7 +103,16 @@ namespace Quantum.Kata.SimonsAlgorithm {
             AssertIntEqual(Length(x), Length(A[0]), "Arrays x and A[0] should have the same length");
             AssertIntEqual(Length(y), Length(A), "Arrays y and A should have the same length");
             
-            // ...
+            for(i in 0..Length(x)-1)
+            {
+                for(j in 0..Length(y)-1) 
+                {
+                    if(A[j][i] == 1) 
+                    {
+                        CNOT(x[i], y[j]);
+                    }
+                }
+            }
         }
         
         adjoint invert;
@@ -113,7 +131,7 @@ namespace Quantum.Kata.SimonsAlgorithm {
     operation SA_StatePrep (query : Qubit[]) : Unit {
         
         body (...) {
-            // ...
+            ApplyToEachCA(H, query);
         }
         
         adjoint invert;
@@ -146,7 +164,28 @@ namespace Quantum.Kata.SimonsAlgorithm {
         // the array has to be mutable to allow updating its elements.
         mutable b = new Int[N];
         
-        // ...
+        using ((x, y) = (Qubit[N], Qubit[N])) 
+        {
+            // prepare qubits in the right state
+            SA_StatePrep(x);
+            
+            // apply oracle
+            Uf(x, y);
+            
+            // apply Hadamard to each qubit of the input register
+            ApplyToEach(H, x);
+            
+            for (i in 0 .. N - 1) 
+            {
+                if (M(x[i]) == One) 
+                {
+                    set b[i] = 1;
+                }
+            }
+            
+            ResetAll(x);
+            ResetAll(y);
+        }
 
         return b;
     }
