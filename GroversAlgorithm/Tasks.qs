@@ -50,7 +50,7 @@ namespace Quantum.Kata.GroversAlgorithm {
     operation Oracle_AllOnes (queryRegister : Qubit[], target : Qubit) : Unit {
         
         body (...) {
-            // ...
+            Controlled X(queryRegister, target);
         }
         
         adjoint self;
@@ -71,12 +71,27 @@ namespace Quantum.Kata.GroversAlgorithm {
     operation Oracle_AlternatingBits (queryRegister : Qubit[], target : Qubit) : Unit {
         
         body (...) {
-            // ...
+            FlipOddPositionBits(queryRegister);
+            Controlled X(queryRegister, target);
+            Adjoint FlipOddPositionBits(queryRegister);
         }
         
         adjoint self;
     }
     
+    operation FlipOddPositionBits(register : Qubit[]) : Unit 
+    {
+        body (...) 
+        {
+            for (i in 1 .. 2 .. Length(register) - 1) 
+            {
+                X(register[i]);
+            }
+        }
+        
+        adjoint invert;
+    }
+
     
     // Task 1.3. Arbitrary bit pattern oracle
     // Inputs:
@@ -96,13 +111,28 @@ namespace Quantum.Kata.GroversAlgorithm {
             // You don't need to modify it. Feel free to remove it, this won't cause your code to fail.
             AssertIntEqual(Length(queryRegister), Length(pattern), "Arrays should have the same length");
 
-            // ...
+            (ControlledOnBitString(pattern, X))(queryRegister, target);
         }
         
         adjoint self;
     }
     
-    
+    operation FlipArbitraryBits(register : Qubit[], pattern : Bool[]) : Unit 
+    {
+        body (...) 
+        {
+            for (i in 0..Length(register) - 1) 
+            {
+                if (pattern[i])
+                {
+                    X(register[i]);
+                }
+            }
+        }
+        
+        adjoint invert;
+    }
+
     // Task 1.4*. Oracle converter
     // Input:  A marking oracle: an oracle that takes a register and a target qubit and
     //         flips the target qubit if the register satisfies a certain condition
@@ -113,6 +143,31 @@ namespace Quantum.Kata.GroversAlgorithm {
     // but it is often easier to write a marking oracle for a given condition. This transformation
     // allows to convert one type of oracle into the other. The transformation is described at
     // https://en.wikipedia.org/wiki/Grover%27s_algorithm, section "Description of Uω".
+
+    operation OracleConverterImpl(markingOracle : ((Qubit[], Qubit) => Unit : Adjoint), register : Qubit[]) : Unit
+    {
+        
+        body (...) 
+        {
+            using (target = Qubit()) 
+            {
+                // Put the target into the |-⟩ state
+                X(target);
+                H(target);
+                
+                // Apply the marking oracle; since the target is in the |-⟩ state,
+                // flipping the target if the register satisfies the oracle condition will apply a -1 factor to the state
+                markingOracle(register, target);
+                
+                // Put the target back into |0⟩ so we can return it
+                H(target);
+                X(target);
+            }
+        }
+        
+        adjoint invert;
+    }
+
     function OracleConverter (markingOracle : ((Qubit[], Qubit) => Unit : Adjoint)) : (Qubit[] => Unit : Adjoint) {
         
         // Hint: Remember that you can define auxiliary operations.
@@ -121,7 +176,7 @@ namespace Quantum.Kata.GroversAlgorithm {
         
         // Currently this function returns a no-op operation for the sake of being able to compile the code.
         // You will need to remove ApplyToEachA and return your own oracle instead.
-        return ApplyToEachA(I, _);
+        return OracleConverterImpl(markingOracle, _);
     }
     
     
@@ -138,7 +193,7 @@ namespace Quantum.Kata.GroversAlgorithm {
     operation HadamardTransform (register : Qubit[]) : Unit {
         
         body (...) {
-            // ...
+            ApplyToEachCA(H, register);
         }
         
         adjoint invert;
@@ -161,7 +216,11 @@ namespace Quantum.Kata.GroversAlgorithm {
             
             // Hint 2: You can use the same trick as in the oracle converter task.
             
-            // ...
+            let allZerosOracle = Oracle_ArbitraryPattern(_, _, new Bool[Length(register)]);
+            
+            // Convert it into a phase-flip oracle and apply it
+            let flipOracle = OracleConverter(allZerosOracle);
+            flipOracle(register);
         }
         
         adjoint invert;
@@ -183,7 +242,10 @@ namespace Quantum.Kata.GroversAlgorithm {
             //    3) perform a conditional phase shift
             //    4) apply the Hadamard transform again
             
-            // ...
+            oracle(register);
+            HadamardTransform(register);
+            ConditionalPhaseFlip(register);
+            HadamardTransform(register);
         }
         
         adjoint invert;
@@ -205,7 +267,13 @@ namespace Quantum.Kata.GroversAlgorithm {
     // Note: The number of iterations is passed as a parameter because it is defined by the nature of the problem
     // and is easier to configure/calculate outside the search algorithm itself (for example, in the driver).
     operation GroversSearch (register : Qubit[], oracle : ((Qubit[], Qubit) => Unit : Adjoint), iterations : Int) : Unit {
-            // ...
+            let phaseOracle = OracleConverter(oracle);
+            HadamardTransform(register);
+            
+            for (i in 1 .. iterations) 
+            {
+                GroverIteration(register, phaseOracle);
+            }
     }
     
     
@@ -223,7 +291,6 @@ namespace Quantum.Kata.GroversAlgorithm {
 
             // Hint 3: You can use the Message function to write the results to the console.
 
-            // ...
     }
     
 }
